@@ -51,7 +51,7 @@ public class TimeStampServiceImpl implements TimeStampService {
 
         // 1. Validar sintaxis del Hash SHA-256 (64 caracteres hexadecimales)[cite: 1, 2]
         if (!HashUtils.isValidSha256Hex(hash)) {
-            throw new IllegalArgumentException("El hash enviado no cumple con el formato SHA-256 válido (64 caracteres hex)");[cite: 2]
+            throw new IllegalArgumentException("El hash enviado no cumple con el formato SHA-256 válido (64 caracteres hex)");
         }
 
         // 2. Invocar al proveedor PSC CODEX vía REST client[cite: 1, 2]
@@ -59,7 +59,7 @@ public class TimeStampServiceImpl implements TimeStampService {
 
         if (pscResponse == null || Boolean.FALSE.equals(pscResponse.status())) {
             log.error("Fallo la emisión del sello en PSC CODEX para hash: {}", hash);
-            throw new PscIntegrationException("Error en la respuesta de PSC CODEX al emitir Sello de Tiempo");[cite: 2]
+            throw new PscIntegrationException("Error en la respuesta de PSC CODEX al emitir Sello de Tiempo");
         }
 
         // 3. Validación criptográfica local ASN.1 / Bouncy Castle del sello recibido[cite: 1]

@@ -8,9 +8,9 @@ psc:
 spring:
   datasource:
     # URL de conexión JDBC a MariaDB
-    url: jdbc:mariadb://localhost:3306/psc_integration_db?useSSL=false&serverTimezone=UTC
-    username: psc_user
-    password: TuPasswordSeguro2026!
+    url: jdbc:mariadb://67.23.231.202:3306/nimbusti_psc_integration?useSSL=false&serverTimezone=UTC
+    username: nimbusti_remoto
+    password: YbKBe9x%D)31eBKK
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:

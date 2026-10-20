@@ -36,9 +36,9 @@ public class Nom151ServiceImpl implements Nom151Service {
         String nomHash = request.nom_hash();
         log.info("Solicitando Constancia NOM-151 para Hash SHA-256: {}", nomHash);
 
-        // 1. Validar sintaxis del Hash SHA-256[cite: 1, 2]
+        // 1. Validar sintaxis del Hash SHA-256
         if (!HashUtils.isValidSha256Hex(nomHash)) {
-            throw new IllegalArgumentException("El nom_hash no cumple con el formato SHA-256 de 64 caracteres hex");[cite: 2]
+            throw new IllegalArgumentException("El nom_hash no cumple con el formato SHA-256 de 64 caracteres hex");
         }
 
         // 2. Invocar servicio REST de PSC CODEX
@@ -46,17 +46,17 @@ public class Nom151ServiceImpl implements Nom151Service {
 
         if (pscResponse == null || Boolean.FALSE.equals(pscResponse.status())) {
             log.error("Fallo la emisión de la Constancia NOM-151 para hash: {}", nomHash);
-            throw new PscIntegrationException("Error en la respuesta de PSC CODEX al solicitar Constancia NOM-151");[cite: 2]
+            throw new PscIntegrationException("Error en la respuesta de PSC CODEX al solicitar Constancia NOM-151");
         }
 
-        // 3. Validación Criptográfica ASN.1 de la Constancia recibida[cite: 1]
+        // 3. Validación Criptográfica ASN.1 de la Constancia recibida
         boolean isValid = pscCryptoValidator.validateNom151Certificate(pscResponse.file(), nomHash);
         if (!isValid) {
             log.error("La constancia NOM-151 retornada no pasó la validación local para el UUID: {}", pscResponse.uuid());
             throw new PscIntegrationException("La constancia NOM-151 no superó la verificación criptográfica de la firma del PSC");
         }
 
-        // 4. Persistencia Inalterable en la Base de Datos[cite: 1, 2]
+        // 4. Persistencia Inalterable en la Base de Datos
         Nom151Evidence evidence = Nom151Evidence.builder()
                 .uuid(pscResponse.uuid())
                 .nomHash(nomHash)
@@ -65,7 +65,7 @@ public class Nom151ServiceImpl implements Nom151Service {
                 .build();
         nom151EvidenceRepository.save(evidence);
 
-        // 5. Registro en Bitácora de Auditoría[cite: 1]
+        // 5. Registro en Bitácora de Auditoría
         registerAuditLog(PscAuditLog.TransactionType.NOM151, pscResponse.uuid(), 
                 PscAuditLog.AuditAction.REQUESTED, "Constancia NOM-151 emitida y validada exitosamente");
 
@@ -77,7 +77,7 @@ public class Nom151ServiceImpl implements Nom151Service {
     public ValidateTsaHashResponseDto validateCertificate(ValidateNomHashRequestDto request) {
         log.info("Validando Constancia NOM-151 para UUID: {}", request.uuid());
 
-        // 1. Verificar firma DER/ASN.1 localmente[cite: 1]
+        // 1. Verificar firma DER/ASN.1 localmente
         boolean localValid = pscCryptoValidator.validateNom151Certificate(request.fileNom64(), request.nom_hash());
 
         if (!localValid) {
@@ -86,7 +86,7 @@ public class Nom151ServiceImpl implements Nom151Service {
             return new ValidateTsaHashResponseDto(false, "La Constancia NOM-151 es inválida o no corresponde al mensaje de datos");
         }
 
-        // 2. Confirmación con endpoint de PSC CODEX[cite: 2]
+        // 2. Confirmación con endpoint de PSC CODEX
         ValidateTsaHashResponseDto pscValidation = pscCodexClient.validateNom151(request);
 
         PscAuditLog.AuditAction action = Boolean.TRUE.equals(pscValidation.status()) ? 

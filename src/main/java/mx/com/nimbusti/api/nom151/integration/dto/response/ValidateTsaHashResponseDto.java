@@ -1,5 +1,4 @@
-
-package mx.com.nimbusti.api.nom151.dto.response;
+package mx.com.nimbusti.api.nom151.integration.dto.response;
 
 /**
  * Represents the response returned after validating a TSA hash.
