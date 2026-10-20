@@ -68,11 +68,24 @@
             <version>2.2.0</version>
         </dependency>
 
-        <!-- Testing -->
+        <!-- Spring Boot Starter Test (Incluye MockMvc, JUnit 5, Mockito y soporte Jackson) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Módulo explícito de Auto-configuración de pruebas para WebMvcTest -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test-autoconfigure</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Jackson Databind (Para serialización/deserialización JSON y ObjectMapper) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
 

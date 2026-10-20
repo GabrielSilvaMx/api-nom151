@@ -8,6 +8,7 @@ import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.cms.SignerInformationStore;
 import org.bouncycastle.cms.SignerInformationVerifier;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.tsp.TimeStampToken;
@@ -24,29 +25,23 @@ import java.util.Collection;
 @Component
 public class PscCryptoValidator {
 
-    /**
-     * Valida un TimeStampToken (RFC 3161) codificado en Base64 contra el hash SHA-256 esperado[cite: 1, 2].
-     * 
-     * @param base64Tst Token de sello de tiempo en Base64 (retornado por PSC CODEX)[cite: 1, 2]
-     * @param expectedSha256Hash Hash SHA-256 hexadecimal esperado[cite: 1, 2]
-     * @return true si la estructura es válida y el hash coincide
-     */
     public boolean validateTimeStampToken(String base64Tst, String expectedSha256Hash) {
         try {
             byte[] derTokenBytes = Base64.getDecoder().decode(base64Tst.trim());
-            TimeStampToken timeStampToken = new TimeStampToken(org.bouncycastle.cms.CMSSignedData.class.cast(
-                    new org.bouncycastle.cms.CMSSignedData(derTokenBytes)));
+            TimeStampToken timeStampToken = new TimeStampToken(
+                    new org.bouncycastle.cms.CMSSignedData(derTokenBytes)
+            );
 
             TimeStampTokenInfo info = timeStampToken.getTimeStampInfo();
 
-            // 1. Validar Algoritmo de Digest (debe ser SHA-256)[cite: 1, 3]
+            // 1. Validar Algoritmo de Digest (debe ser SHA-256)
             ASN1ObjectIdentifier hashAlgorithmOid = info.getHashAlgorithm().getAlgorithm();
             if (!NISTObjectIdentifiers.id_sha256.equals(hashAlgorithmOid)) {
                 log.warn("El sello de tiempo no utiliza el algoritmo SHA-256. OID recibido: {}", hashAlgorithmOid);
                 return false;
             }
 
-            // 2. Extraer Hash Embebido en la estructura ASN.1 y comparar
+            // 2. Compara Hash esperado vs embebido en ASN.1
             byte[] embeddedHashBytes = info.getMessageImprintDigest();
             String embeddedHashHex = Hex.toHexString(embeddedHashBytes);
 
@@ -56,7 +51,7 @@ public class PscCryptoValidator {
                 return false;
             }
 
-            // 3. Verificar Firma Digital del PSC con el certificado emisor adjunto en el token[cite: 1]
+            // 3. Verificar Firma Digital del PSC
             return verifyTokenSignature(timeStampToken);
 
         } catch (Exception e) {
@@ -65,21 +60,10 @@ public class PscCryptoValidator {
         }
     }
 
-    /**
-     * Valida una Constancia de Conservación NOM-151 codificada en Base64[cite: 1, 2].
-     * 
-     * @param base64NomConstancy Constancia NOM-151 en Base64[cite: 1, 2]
-     * @param expectedSha256Hash Hash SHA-256 del mensaje de datos[cite: 1, 2]
-     */
     public boolean validateNom151Certificate(String base64NomConstancy, String expectedSha256Hash) {
-        // En la norma NOM-151, la constancia se emite como un bloque ASN.1 DER / CMS SignedData[cite: 1, 3].
-        // Reutilizamos la verificación del sello/CMS sobre el hash del mensaje procesado[cite: 1, 2].
         return validateTimeStampToken(base64NomConstancy, expectedSha256Hash);
     }
 
-    /**
-     * Inspecciona la estructura ASN.1 en busca de anomalías en el encoding DER.
-     */
     public boolean isValidDerStructure(byte[] derBytes) {
         try (ASN1InputStream asn1In = new ASN1InputStream(new ByteArrayInputStream(derBytes))) {
             ASN1Primitive obj = asn1In.readObject();
@@ -91,17 +75,26 @@ public class PscCryptoValidator {
     }
 
     /**
-     * Verifica la firma PKCS#7 / CMS dentro del TimeStampToken[cite: 1].
+     * Corregido: Obtiene el SignerInformation desde SignerInformationStore y resuelve 
+     * el certificado emisor a través de la coincidencia con el SID del firmante.
      */
     private boolean verifyTokenSignature(TimeStampToken timeStampToken) {
         try {
+            // Extraer colecciones de certs y firmantes
             Store<X509CertificateHolder> certs = timeStampToken.getCertificates();
-            SignerInformation signer = timeStampToken.getSID() != null ? 
-                    timeStampToken.getCertificates().getMatches(null).iterator().next() : null;
+            SignerInformationStore signers = timeStampToken.toCMSSignedData().getSignerInfos();
+            Collection<SignerInformation> c = signers.getSigners();
 
-            Collection<X509CertificateHolder> matches = certs.getMatches(timeStampToken.getSID());
+            if (c.isEmpty()) {
+                log.warn("No se encontraron firmantes dentro del TimeStampToken");
+                return false;
+            }
+
+            SignerInformation signer = c.iterator().next();
+            Collection<X509CertificateHolder> matches = certs.getMatches(signer.getSID());
+
             if (matches.isEmpty()) {
-                log.warn("No se encontró el certificado del PSC dentro del TimeStampToken");
+                log.warn("No se encontró el certificado correspondiente al firmante en el token");
                 return false;
             }
 

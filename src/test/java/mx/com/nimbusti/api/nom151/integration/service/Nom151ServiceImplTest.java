@@ -46,25 +46,22 @@ class Nom151ServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        validNomHash = "741e4284fc27be60854ab665f34b4345c1ae38e4822d056b7521f684661e3a6a";[cite: 1, 3]
-        sampleUuid = "cbc3b8e0-69fb-4b24-b127-f448e112f020";[cite: 3]
-        sampleBase64Nom = "MIIUczADAgEAMIIUagYJKoZIhvcNAQcCoIIUWzCCFFcCAQMxDzANBglghkg...";[cite: 1, 3]
+        validNomHash = "741e4284fc27be60854ab665f34b4345c1ae38e4822d056b7521f684661e3a6a";
+        sampleUuid = "cbc3b8e0-69fb-4b24-b127-f448e112f020";
+        sampleBase64Nom = "MIIUczADAgEAMIIUagYJKoZIhvcNAQcCoIIUWzCCFFcCAQMxDzANBglghkg";
     }
 
     @Test
     @DisplayName("Debe emitir y guardar una Constancia NOM-151 cuando el hash es válido")
     void shouldRequestNom151CertificateSuccessfully() {
-        // Arrange
         NomHashRequestDto request = new NomHashRequestDto(validNomHash);
         NomHashResponseDto mockResponse = new NomHashResponseDto(true, validNomHash, sampleBase64Nom, sampleUuid);
 
         when(pscCodexClient.requestNom151(request)).thenReturn(mockResponse);
         when(pscCryptoValidator.validateNom151Certificate(sampleBase64Nom, validNomHash)).thenReturn(true);
 
-        // Act
         NomHashResponseDto response = nom151Service.requestCertificate(request);
 
-        // Assert
         assertNotNull(response);
         assertTrue(response.status());
         assertEquals(sampleUuid, response.uuid());
@@ -76,11 +73,9 @@ class Nom151ServiceImplTest {
     @Test
     @DisplayName("Debe lanzar excepción si PSC CODEX devuelve un objeto nulo o fallido")
     void shouldThrowExceptionWhenPscResponseIsInvalid() {
-        // Arrange
         NomHashRequestDto request = new NomHashRequestDto(validNomHash);
         when(pscCodexClient.requestNom151(request)).thenReturn(null);
 
-        // Act & Assert
         assertThrows(PscIntegrationException.class, () -> nom151Service.requestCertificate(request));
         verify(nom151EvidenceRepository, never()).save(any());
     }
